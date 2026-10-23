@@ -203,6 +203,12 @@ function alertarStockCritico(lista: Producto[], limite: number): Producto []{
     return critico;
 }
 
+//3)filtrarPorPaisProveedor(lista: Producto[], pais: string): Producto[].
+function filtrarPorPaisProveedor(lista: Producto[], pais: string): Producto [] {
+  return lista.filter (p => p.proveedor.pais == pais)
+}
+
+
 
 /*----------------------TEAM 4----------------------*/
 
