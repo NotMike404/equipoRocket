@@ -9,6 +9,7 @@ servidor central&*/
 //precioUnitario: number; categoria: 'tecnologia' | 'hogar' | 'ropa';
 //stock: number; proveedor: Proveedor }. Armar array feik de 8 productos con al
 //menos 2 con stock menor a 5 unidades.
+
 interface Proveedor {
   id: string;
   razonSocial: string;
@@ -23,8 +24,6 @@ interface Producto {
   stock: number;
   proveedor: Proveedor;
 }
-
-
 
 /*----------------------TEAM 2----------------------*/
 //Exportar fetchInventario(): Promise<Producto[]> con demora de 2.2s. Añadir lógica
