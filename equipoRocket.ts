@@ -128,100 +128,128 @@ const lista: Producto[] = [
 
 /*----------------------TEAM 2----------------------*/
 
-
-/**
- * inventario.ts
- *
- * Servicio simulado de inventario.
- * Expone `fetchInventario()`, que devuelve una promesa con la lista de
- * productos tras una demora de 2.2 segundos. Simula fallos de servidor:
- * con una probabilidad del 20 % rechaza con un error 503.
- */
-
-export interface Productos {
-  id: number;
-  nombre: string;
-  categoria: string;
-  precio: number;
-  stock: number;
-}
-/** Datos de ejemplo que devuelve el servicio simulado. */
-const INVENTARIO_SIMULADO: Productos[] = [
-  { id: 1, nombre: "Teclado mecnico\u00e1", categoria: "Perifricos\u00e9", precio: 79.99, stock: 24 },
-  { id: 2, nombre: "Raton inalmbrico\u00f3", categoria: "Perifricos\u00e9", precio: 29.5, stock: 60 },
-  { id: 3, nombre: "Monitor 27\" 144Hz", categoria: "Pantallas", precio: 249.0, stock: 12 },
-  { id: 4, nombre: "Webcam 1080p", categoria: "Accesorios", precio: 45.75, stock: 0 },
-  { id: 5, nombre: "Auriculares USB-C", categoria: "Audio", precio: 59.9, stock: 33 },
-];
-
-/** Demora de la respuesta simulada, en milisegundos. */
-const DEMORA_MS = 22
-
-/** Probabilidad de que el servidor "no responda" (0.0 - 1.0). */
+// Esta función simula la descarga del inventario y devuelve productos con la estructura definida por TEAM 1.
+const DEMORA_MS = 2200; // Cambio: 2.2 segundos son 2200 milisegundos.
 const PROBABILIDAD_FALLO = 0.2;
 
- */la simulaci\u00f3n decide fallar.
- 
- export function fetchInventario(): Promise<Productos[]> {
-  return new Promise<Productos[]>((resolve, reject) => {
+export function fetchInventario(): Promise<Producto[]> {
+  return new Promise((resolve, reject) => {
     setTimeout(() => {
       if (Math.random() < PROBABILIDAD_FALLO) {
-        reject(new Error("Servidor de inventarios no responden (503)"));
+        // Cambio: se usa exactamente el mensaje de error indicado en la consigna.
+        reject(new Error('Servidor de inventarios no responde (503)'));
         return;
       }
-      // Se devuelve una copia para evitar mutaciones externas del origen.
-      resolve(INVENTARIO_SIMULADO.map((producto) => ({ ...productos })));
+
+      // Cambio: se entrega una copia del catálogo compartido, incluyendo el proveedor anidado.
+      resolve(
+        lista.map((producto) => ({
+          ...producto,
+          proveedor: { ...producto.proveedor }
+        }))
+      );
     }, DEMORA_MS);
   });
-
-//Exportar fetchInventario(): Promise<Producto[]> con demora de 2.2s. Añadir lógica
-//de simulación: si Math.random() < 0.2, rechazar con Error("Servidor de
-//inventarios no responde (503)").
+}
 
 /*----------------------TEAM 3----------------------*/
-//1) calcularValorTotal(lista: Producto[]): number 
-//(suma total de stock × precio con 13% de impuesto incluido).
+
+// Cambio: calcula el subtotal del producto y aplica el descuento por volumen.
+function calcularSubtotalConDescuento(producto: Producto): number {
+  const subtotalProducto = producto.stock * producto.precioUnitario;
+  let descuento = 0;
+
+  // Cambio: aplica 10 % de descuento cuando hay 10 o más unidades del mismo producto.
+  if (producto.stock >= 10) {
+    descuento = subtotalProducto * 0.10;
+  }
+
+  return subtotalProducto - descuento;
+}
+
+// Cambio: el total usa el subtotal con descuentos antes de agregar el IVA del 13 %.
 function calcularValorTotal(lista: Producto[]): number {
-let suma = 0;
-for (const producto of lista) {
-suma += producto.stock * producto.precioUnitario;
-}
-return suma * 1.13;
-}   
+  const subtotalConDescuento = lista.reduce(
+    (total, producto) => total + calcularSubtotalConDescuento(producto),
+    0
+  );
 
-console.log(calcularValorTotal(lista));
-
-
-//2) alertarStockCritico(lista: Producto[], limite: number): Producto[].
-function alertarStockCritico(lista: Producto[], limite: number): Producto []{
-    let critico: Producto[]=[];
-    for (const producto of lista){
-        if(producto.stock < limite){
-            critico.push(producto);
-        }
-    }
-    return critico;
+  // Cambio: agrega el IVA después de descontar el volumen.
+  return subtotalConDescuento * 1.13;
 }
 
-//3)filtrarPorPaisProveedor(lista: Producto[], pais: string): Producto[].
-function filtrarPorPaisProveedor(lista: Producto[], pais: string): Producto [] {
-  return lista.filter (p => p.proveedor.pais == pais)
+function alertarStockCritico(lista: Producto[], limite: number): Producto[] {
+  // Cambio: filter devuelve solo productos cuyo stock está por debajo del límite.
+  return lista.filter((producto) => producto.stock < limite);
 }
 
-
+function filtrarPorPaisProveedor(
+  lista: Producto[],
+  pais: string
+): Producto[] {
+  // Cambio: normaliza mayúsculas y minúsculas para que, por ejemplo, "méxico" y "México" coincidan.
+  return lista.filter(
+    (producto) =>
+      producto.proveedor.pais.toLowerCase() === pais.toLowerCase()
+  );
+}
 
 /*----------------------TEAM 4----------------------*/
 
-
-async function espera(): Promise<void> {
-  console.log('Un momento porfavor...........');
-} try {
-    const lista = await reintentos();
-    imprimirResumen(lista);
+async function obtenerInventarioConReintento(): Promise<Producto[]> {
+  try {
+    return await fetchInventario();
   } catch (err) {
-    const mensaje = err instanceof Error ? err.message : String(err);
-    console.error(`No pudimos encontrar lo solicitado: ${mensaje}`);
-    process.exitCode = 1;
+    // Cambio: si falla la primera consulta, se realiza un único segundo intento.
+    console.warn('Falló la primera consulta; se intentará una vez más.', err);
+    return await fetchInventario();
   }
-  espera();
+}
 
+// Cambio: resume el total, los montos por categoría y los productos de stock crítico.
+function imprimirResumen(productos: Producto[]): void {
+  console.log('Total monetario del almacén (IVA incluido):');
+  console.log(calcularValorTotal(productos));
+
+  // Cambio: acumula el valor con IVA por cada una de las categorías permitidas.
+  const totalesPorCategoria: Record<Producto['categoria'], number> = {
+    tecnologia: 0,
+    hogar: 0,
+    ropa: 0
+  };
+
+  for (const producto of productos) {
+    // Cambio: el desglose también aplica el descuento de volumen y luego el IVA.
+    totalesPorCategoria[producto.categoria] +=
+      calcularSubtotalConDescuento(producto) * 1.13;
+  }
+
+  console.log('Desglose por categoría (IVA incluido):');
+  console.table(totalesPorCategoria);
+
+  // Cambio: muestra como alertas urgentes los productos con menos de 5 unidades.
+  const alertas = alertarStockCritico(productos, 5);
+  console.log('Alertas de reabastecimiento urgente:');
+  console.table(
+    alertas.map((producto) => ({
+      id: producto.id,
+      nombre: producto.nombre,
+      stock: producto.stock,
+      proveedor: producto.proveedor.razonSocial
+    }))
+  );
+}
+
+async function main(): Promise<void> {
+  try {
+    const productos = await obtenerInventarioConReintento();
+    imprimirResumen(productos);
+  } catch (err) {
+    // Cambio: informa claramente si fallaron tanto la consulta inicial como el reintento.
+    const mensaje = err instanceof Error ? err.message : String(err);
+    console.error(`No se pudo cargar el inventario: ${mensaje}`);
+  }
+}
+
+// Cambio: inicia la ejecución sin usar await fuera de una función async.
+void main();
